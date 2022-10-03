@@ -1,9 +1,54 @@
-#ifndef __LOG_h__
-#define __LOG_h__
-
+#ifndef __LOG_H__
+#define __LOG_H__
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
+
+
+#include <ctype.h>
+#include <inttypes.h>
+#include <libgen.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
+#define LOG_COL_NONE    ""
+#define LOG_COL_RST     "\x1b[0m"
+#define LOG_COL_DBG     "\x1b[02m"
+#define LOG_COL_EXPR    "\x1b[36m"
+#define LOG_COL_VAL     "\x1b[01m"
+#define LOG_COL_TYPE    "\x1b[32m"
+#define LOG_DBG_H_COL(out, col)          (isatty(fileno(out)) ? (col): LOG_COL_NONE)
+#define LOG_xstr0(x) #x
+#define LOG_xstr(x)  LOG_xstr0(x)
+#define LOG_DBG_H_FILE __BASE_FILE__
+
+#define __log_dbg(out, x, fs)      ({                                          \
+    typeof(x) _x0 = (x);                                                            \
+    log_debug(\
+        "%s %s%s%s = %s" LOG_xstr(fs) "%s (%s%s%s)",       \
+                LOG_DBG_H_COL(out, LOG_COL_RST),                                            \
+                LOG_DBG_H_COL(out, LOG_COL_EXPR), #x, LOG_DBG_H_COL(out, LOG_COL_RST),              \
+                LOG_DBG_H_COL(out, LOG_COL_VAL), _x0, LOG_DBG_H_COL(out, LOG_COL_RST),              \
+                LOG_DBG_H_COL(out, LOG_COL_TYPE), #fs, LOG_DBG_H_COL(out, LOG_COL_RST)              \
+            );                                                                      \
+    _x0;                                                                            \
+})
+
+#define __log_dbg_ok(out, x, fs)      ({                                          \
+    typeof(x) _x0 = (x);                                                            \
+    int _n0 = fprintf(out, "%s[%s:%d (%s)]%s %s%s%s = %s" LOG_xstr(fs) "%s (%s%s%s)\n",       \
+                LOG_DBG_H_COL(out, LOG_COL_DBG),                                            \
+                basename(LOG_DBG_H_FILE), __LINE__, __func__,                 \
+                LOG_DBG_H_COL(out, LOG_COL_RST),                                            \
+                LOG_DBG_H_COL(out, LOG_COL_EXPR), #x, LOG_DBG_H_COL(out, LOG_COL_RST),              \
+                LOG_DBG_H_COL(out, LOG_COL_VAL), _x0, LOG_DBG_H_COL(out, LOG_COL_RST),              \
+                LOG_DBG_H_COL(out, LOG_COL_TYPE), #fs, LOG_DBG_H_COL(out, LOG_COL_RST)              \
+            );                                                                      \
+    assert(_n0 > 0);                                                                \
+    _x0;                                                                            \
+})
+
 
 #ifndef LOGLEVEL
 #define LOGLEVEL 4
@@ -16,7 +61,6 @@
 #endif
 
 #ifdef NDEBUG
-/* compile with all debug messages removed */
 #define log_debug(M, ...)
 #else
 #ifdef LOG_NOCOLORS
@@ -53,5 +97,15 @@
 #undef log_error
 #define log_error(M, ...)
 #endif
+
+#define log_dbg(x, fs) __log_dbg(stdout, x, fs)
+#define log_dbe(x, fs)  __log_dbg(stderr, x, fs)
+
+#define Dbg log_dbg
+#define Dbge log_dbge
+#define Info log_info
+#define Debug log_debug
+#define Error log_error
+#define Warn log_warn
 
 #endif
